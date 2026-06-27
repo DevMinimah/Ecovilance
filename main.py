@@ -16,42 +16,49 @@ def fetch_air_quality_data(lat=6.5244, lon=3.3792):
         "no2": float(current['nitrogen_dioxide'])
     }
 
-# ==========================================
-# STEP 2 & 3: Cryptographic Seal & Mini-Ledger
-# ==========================================
 def create_hash_chain(num_entries=3):
     ledger_file = "ecovilance_ledger.csv"
     previous_hash = "0" * 64 
-    
     with open(ledger_file, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Timestamp", "PM2.5", "PM10", "NO2", "Data Hash", "Previous Hash", "Chain Hash"])
-        
         print(f"🛡️ Starting Ecovilance. Logging {num_entries} data points...\n")
-        
         for i in range(num_entries):
             env_data = fetch_air_quality_data()
             data_string = json.dumps(env_data, sort_keys=True)
             data_hash = hashlib.sha256(data_string.encode()).hexdigest()
-            
             chain_input = data_hash + previous_hash
             chain_hash = hashlib.sha256(chain_input.encode()).hexdigest()
-            
             with open(ledger_file, mode='a', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow([
-                    env_data['timestamp'], env_data['pm2_5'], env_data['pm10'], env_data['no2'],
-                    data_hash, previous_hash, chain_hash
-                ])
-            
+                writer.writerow([env_data['timestamp'], env_data['pm2_5'], env_data['pm10'], env_data['no2'], data_hash, previous_hash, chain_hash])
             print(f"[{i+1}/{num_entries}] Logged data | Chain Hash: {chain_hash[:16]}...")
             previous_hash = chain_hash
-            
-            if i < num_entries - 1:
-                time.sleep(2) 
-                
+            if i < num_entries - 1: time.sleep(2) 
     print(f"\n✅ Success! Ledger saved to '{ledger_file}'")
     return ledger_file
 
+# ==========================================
+# STEP 4: The Audit Script
+# ==========================================
+def audit_ledger(ledger_file):
+    print("\n--- 🕵️ INITIATING ECOVILANCE SECURITY AUDIT ---")
+    previous_hash = "0" * 64
+    with open(ledger_file, mode='r') as file:
+        reader = csv.DictReader(file)
+        for row_num, row in enumerate(reader, start=1):
+            env_data = {"timestamp": row['Timestamp'], "pm2_5": float(row['PM2.5']), "pm10": float(row['PM10']), "no2": float(row['NO2'])}
+            data_string = json.dumps(env_data, sort_keys=True)
+            calculated_data_hash = hashlib.sha256(data_string.encode()).hexdigest()
+            chain_input = calculated_data_hash + previous_hash
+            calculated_chain_hash = hashlib.sha256(chain_input.encode()).hexdigest()
+            if calculated_chain_hash != row['Chain Hash']:
+                print(f"🚨 ALERT: TAMPER DETECTED AT ROW {row_num}! Environmental data has been maliciously modified.")
+                return False
+            previous_hash = row['Chain Hash']
+    print("✅ AUDIT PASSED: All Ecovilance data integrity seals are intact.")
+    return True
+
 if __name__ == "__main__":
     ledger = create_hash_chain(num_entries=3)
+    audit_ledger(ledger)
