@@ -9,12 +9,7 @@ def fetch_air_quality_data(lat=6.5244, lon=3.3792):
     response = requests.get(url)
     data = response.json()
     current = data['current']
-    return {
-        "timestamp": current['time'],
-        "pm2_5": float(current['pm2_5']),
-        "pm10": float(current['pm10']),
-        "no2": float(current['nitrogen_dioxide'])
-    }
+    return {"timestamp": current['time'], "pm2_5": float(current['pm2_5']), "pm10": float(current['pm10']), "no2": float(current['nitrogen_dioxide'])}
 
 def create_hash_chain(num_entries=3):
     ledger_file = "ecovilance_ledger.csv"
@@ -38,9 +33,6 @@ def create_hash_chain(num_entries=3):
     print(f"\n✅ Success! Ledger saved to '{ledger_file}'")
     return ledger_file
 
-# ==========================================
-# STEP 4: The Audit Script
-# ==========================================
 def audit_ledger(ledger_file):
     print("\n--- 🕵️ INITIATING ECOVILANCE SECURITY AUDIT ---")
     previous_hash = "0" * 64
@@ -61,4 +53,21 @@ def audit_ledger(ledger_file):
 
 if __name__ == "__main__":
     ledger = create_hash_chain(num_entries=3)
+    audit_ledger(ledger)
+    
+    # ==========================================
+    # TEST TAMPER PROOF: Simulate a hack!
+    # ==========================================
+    print("\n--- ⚠️ SIMULATING A MALICIOUS ATTACK ---")
+    with open(ledger, mode='r') as f:
+        lines = f.readlines()
+    
+    parts = lines[1].split(',')
+    parts[1] = "0.0" 
+    lines[1] = ','.join(parts)
+    
+    with open(ledger, mode='w') as f:
+        f.writelines(lines)
+    print("Attacker changed PM2.5 reading to 0.0 to hide pollution.")
+    
     audit_ledger(ledger)
